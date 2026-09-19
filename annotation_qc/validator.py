@@ -5,6 +5,7 @@ from pathlib import Path
 from typing import Any
 
 import pandas as pd
+from PIL import Image, UnidentifiedImageError
 
 REQUIRED_COLUMNS = ("image_id", "image_path", "label", "x_min", "y_min", "x_max", "y_max")
 OPTIONAL_IMAGE_SIZE_COLUMNS = ("image_width", "image_height")
@@ -56,8 +57,9 @@ def _finite_number(value: Any) -> float | None:
     return number if pd.notna(number) and number not in (float("inf"), float("-inf")) else None
 
 
-def validate_dataframe(df: pd.DataFrame, source: str = "<dataframe>") -> ValidationResult:
+def validate_dataframe(df: pd.DataFrame, source: str = "<dataframe>", image_root: str | Path | None = None) -> ValidationResult:
     issues: list[QualityIssue] = []
+    root = Path(image_root) if image_root is not None else None
     missing_columns = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing_columns:
         return ValidationResult(source, len(df), [
@@ -111,9 +113,28 @@ def validate_dataframe(df: pd.DataFrame, source: str = "<dataframe>") -> Validat
                         f"Bounding box ends at ({x_max:g}, {y_max:g}) outside image size {width:g}x{height:g}."
                     ))
 
+                if root is not None:
+                    image_path = root / str(row["image_path"])
+                    if not image_path.is_file():
+                        issues.append(QualityIssue(csv_row, "image_file_missing",
+                                                   f"Image file not found: {image_path}"))
+                    else:
+                        try:
+                            with Image.open(image_path) as image:
+                                actual_width, actual_height = image.size
+                        except (UnidentifiedImageError, OSError):
+                            issues.append(QualityIssue(csv_row, "image_file_unreadable",
+                                                       f"Could not read image file: {image_path}"))
+                        else:
+                            if actual_width != width or actual_height != height:
+                                issues.append(QualityIssue(
+                                    csv_row, "image_dimension_mismatch",
+                                    f"CSV declares {width:g}x{height:g}, but image is {actual_width}x{actual_height}."
+                                ))
+
     return ValidationResult(source, len(df), issues)
 
 
-def validate_csv(path: str | Path) -> ValidationResult:
+def validate_csv(path: str | Path, image_root: str | Path | None = None) -> ValidationResult:
     path = Path(path)
-    return validate_dataframe(load_annotations(path), source=str(path))
+    return validate_dataframe(load_annotations(path), source=str(path), image_root=image_root)
