@@ -38,3 +38,28 @@ def test_only_one_dimension_column_is_configuration_error():
     result = validate_dataframe(df)
     assert not result.passed
     assert any(issue.code == "incomplete_image_dimensions" for issue in result.issues)
+
+
+def test_real_image_dimension_mismatch_is_detected(tmp_path):
+    from PIL import Image
+
+    image_dir = tmp_path / "images"
+    image_dir.mkdir()
+    Image.new("RGB", (320, 240)).save(image_dir / "1.jpg")
+
+    df = frame_with_size(size=(640, 480))
+    result = validate_dataframe(df, image_root=tmp_path)
+
+    assert not result.passed
+    assert any(issue.code == "image_dimension_mismatch" for issue in result.issues)
+
+
+def test_matching_real_image_dimensions_pass(tmp_path):
+    from PIL import Image
+
+    image_dir = tmp_path / "images"
+    image_dir.mkdir()
+    Image.new("RGB", (640, 480)).save(image_dir / "1.jpg")
+
+    result = validate_dataframe(frame_with_size(), image_root=tmp_path)
+    assert result.passed
