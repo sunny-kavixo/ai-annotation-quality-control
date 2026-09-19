@@ -1,0 +1,4 @@
+image_id,image_path,label,x_min,y_min,x_max,y_max
+img_001,images/street_001.jpg,car,42,70,260,210
+img_002,images/street_002.jpg,pedestrian,310,55,352,190
+img_003,images/street_003.jpg,bicycle,125,88,240,205

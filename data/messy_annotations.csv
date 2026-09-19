@@ -1,0 +1,6 @@
+image_id,image_path,label,x_min,y_min,x_max,y_max
+img_101,images/frame_101.jpg,car,20,40,180,160
+img_102,images/frame_102.jpg,,55,30,120,170
+img_103,images/frame_103.jpg,pedestrian,-5,25,80,190
+img_104,images/frame_104.jpg,bicycle,140,70,100,180
+img_104,images/frame_105.jpg,car,left,50,220,210
