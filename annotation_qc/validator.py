@@ -44,7 +44,12 @@ def load_annotations(path: str | Path) -> pd.DataFrame:
     path = Path(path)
     if path.suffix.lower() != ".csv":
         raise ValueError("V0.1 currently accepts CSV annotation files only.")
-    return pd.read_csv(path)
+    try:
+        return pd.read_csv(path)
+    except pd.errors.EmptyDataError as exc:
+        raise ValueError("The annotation CSV is empty.") from exc
+    except pd.errors.ParserError as exc:
+        raise ValueError(f"Could not parse annotation CSV: {exc}") from exc
 
 
 def validate_dataframe(df: pd.DataFrame, source: str = "<dataframe>") -> ValidationResult:
@@ -61,13 +66,13 @@ def validate_dataframe(df: pd.DataFrame, source: str = "<dataframe>") -> Validat
         )
         return ValidationResult(source=source, rows=len(df), issues=issues)
 
-    duplicate_ids = df["image_id"].duplicated(keep=False)
-    for index in df.index[duplicate_ids]:
+    exact_duplicates = df.duplicated(subset=list(REQUIRED_COLUMNS), keep=False)
+    for index in df.index[exact_duplicates]:
         issues.append(
             QualityIssue(
                 row=int(index) + 2,
-                code="duplicate_image_id",
-                message=f"image_id '{df.at[index, 'image_id']}' appears more than once.",
+                code="duplicate_annotation",
+                message="This annotation row is duplicated exactly.",
                 severity="warning",
             )
         )
@@ -90,7 +95,7 @@ def validate_dataframe(df: pd.DataFrame, source: str = "<dataframe>") -> Validat
         for column in ("x_min", "y_min", "x_max", "y_max"):
             try:
                 value = float(row[column])
-                if pd.isna(value):
+                if pd.isna(value) or not pd.notna(value) or value in (float("inf"), float("-inf")):
                     raise ValueError
                 coordinates[column] = value
             except (TypeError, ValueError):
@@ -98,7 +103,7 @@ def validate_dataframe(df: pd.DataFrame, source: str = "<dataframe>") -> Validat
                     QualityIssue(
                         row=csv_row,
                         code="invalid_coordinate",
-                        message=f"{column} must be a number.",
+                        message=f"{column} must be a finite number.",
                     )
                 )
 
