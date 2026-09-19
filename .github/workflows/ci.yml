@@ -1,4 +1,4 @@
-name: V0.1 validation
+name: Annotation QC product CI
 
 on:
   pull_request:
@@ -36,3 +36,9 @@ jobs:
             exit 1
           fi
           test -s /tmp/messy_report.json
+
+      - name: Verify dashboard imports
+        run: python -c "import dashboard"
+
+      - name: Verify Docker build
+        run: docker build -t annotation-qc:test .
