@@ -11,10 +11,15 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Validate an image-annotation CSV dataset.")
     parser.add_argument("dataset", type=Path, help="Path to an annotation CSV file")
     parser.add_argument("--output", type=Path, help="Optional path for a JSON QC report")
+    parser.add_argument(
+        "--image-root",
+        type=Path,
+        help="Optional root directory used to verify real image dimensions",
+    )
     args = parser.parse_args()
 
     try:
-        result = validate_csv(args.dataset)
+        result = validate_csv(args.dataset, image_root=args.image_root)
     except (FileNotFoundError, ValueError) as exc:
         parser.error(str(exc))
 

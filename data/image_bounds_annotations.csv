@@ -1,0 +1,4 @@
+image_id,image_path,label,image_width,image_height,x_min,y_min,x_max,y_max
+img_201,images/warehouse_001.jpg,box,640,480,25,40,210,190
+img_202,images/warehouse_002.jpg,pallet,800,600,620,410,850,590
+img_203,images/warehouse_003.jpg,worker,1280,720,900,300,1030,690
