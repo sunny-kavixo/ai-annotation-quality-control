@@ -1,0 +1,6 @@
+image_id,image_path,label,x_min,y_min,x_max,y_max
+img_301,images/301.jpg,car,10,20,100,120
+img_302,images/302.jpg,Car,20,30,120,160
+img_303,images/303.jpg, car ,30,40,140,180
+img_304,images/304.jpg,forklift,50,60,180,220
+img_305,images/305.jpg,person,70,80,210,260
