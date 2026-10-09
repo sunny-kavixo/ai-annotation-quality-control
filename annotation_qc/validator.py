@@ -59,7 +59,7 @@ def _finite_number(value: Any) -> float | None:
 
 def validate_dataframe(df: pd.DataFrame, source: str = "<dataframe>", image_root: str | Path | None = None) -> ValidationResult:
     issues: list[QualityIssue] = []
-    root = Path(image_root) if image_root is not None else None
+    root = Path(image_root).resolve() if image_root is not None else None
     missing_columns = [c for c in REQUIRED_COLUMNS if c not in df.columns]
     if missing_columns:
         return ValidationResult(source, len(df), [
@@ -114,17 +114,42 @@ def validate_dataframe(df: pd.DataFrame, source: str = "<dataframe>", image_root
                     ))
 
                 if root is not None:
-                    image_path = root / str(row["image_path"])
+                    supplied_path = Path(str(row["image_path"]))
+                    if supplied_path.is_absolute():
+                        issues.append(QualityIssue(
+                            csv_row, "image_path_outside_root",
+                            "image_path must be a relative path contained within image_root."
+                        ))
+                        continue
+
+                    try:
+                        image_path = (root / supplied_path).resolve()
+                    except (OSError, ValueError):
+                        issues.append(QualityIssue(
+                            csv_row, "invalid_image_path",
+                            "image_path is not a valid filesystem path."
+                        ))
+                        continue
+
+                    try:
+                        image_path.relative_to(root)
+                    except ValueError:
+                        issues.append(QualityIssue(
+                            csv_row, "image_path_outside_root",
+                            "image_path must be a relative path contained within image_root."
+                        ))
+                        continue
+
                     if not image_path.is_file():
                         issues.append(QualityIssue(csv_row, "image_file_missing",
-                                                   f"Image file not found: {image_path}"))
+                                                   f"Image file not found: {supplied_path}"))
                     else:
                         try:
                             with Image.open(image_path) as image:
                                 actual_width, actual_height = image.size
                         except (UnidentifiedImageError, OSError):
                             issues.append(QualityIssue(csv_row, "image_file_unreadable",
-                                                       f"Could not read image file: {image_path}"))
+                                                       f"Could not read image file: {supplied_path}"))
                         else:
                             if actual_width != width or actual_height != height:
                                 issues.append(QualityIssue(
