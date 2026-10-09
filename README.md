@@ -21,6 +21,32 @@ streamlit run dashboard.py
 
 For real-image verification, use the CLI's `--image-root` option. For taxonomy validation, provide `--allowed-labels`. Run `python run_qc.py --help` for the current CLI contract.
 
+For a flat issue report that can be filtered in spreadsheet tools, add
+`--issues-csv`:
+
+```bash
+python run_qc.py data/messy_annotations.csv \
+  --output reports/qc.json \
+  --issues-csv reports/annotation_issues.csv
+```
+
+The issue report contains one row per existing QC issue with these columns:
+`csv_row`, `image_id`, `image_path`, `label`, `severity`, `issue_code`, and
+`reason`. Multiple issues for one annotation remain separate rows. Dataset-level
+issues have blank annotation identity fields, and a clean dataset produces a
+headed, empty report. The CSV uses standard quoting for commas, quotes, and
+multiline values.
+
+To reduce spreadsheet formula-injection risk, exported text cells whose first
+character after any leading whitespace, control, or format characters is `=`,
+`+`, `-`, or `@` are prefixed with a single apostrophe. This changes only the
+issue CSV representation; the source annotation CSV and JSON QC report are
+unchanged. Spreadsheet applications typically treat the prefixed value as text,
+although some may display the
+apostrophe. Removing this prefix before opening untrusted values in a spreadsheet
+restores the formula-injection risk; CSV quoting alone does not prevent formula
+execution.
+
 ## Docker
 
 ```bash
