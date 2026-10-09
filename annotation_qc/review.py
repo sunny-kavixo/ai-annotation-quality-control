@@ -8,6 +8,12 @@ import pandas as pd
 from PIL import Image, ImageDraw, UnidentifiedImageError
 
 
+# Resource limits for untrusted annotation images. Keep checks local to this
+# loader rather than changing Pillow's process-wide decompression settings.
+MAX_IMAGE_BYTES = 20 * 1024 * 1024
+MAX_IMAGE_PIXELS = 16_000_000
+
+
 def filter_issues(issues: list[dict], codes: list[str] | None = None) -> list[dict]:
     if not codes:
         return issues
@@ -33,13 +39,24 @@ def load_image_from_zip(zip_bytes: bytes, image_path: str) -> Image.Image:
             key = safe_path.as_posix()
             if key not in names:
                 raise FileNotFoundError(f"Image '{key}' is not present in the uploaded ZIP.")
-            payload = archive.read(names[key])
+            entry = archive.getinfo(names[key])
+            if entry.file_size > MAX_IMAGE_BYTES:
+                raise ValueError("Annotation image exceeds the maximum uncompressed file size.")
+            with archive.open(entry) as source:
+                # Enforce the limit even if the ZIP metadata reports an
+                # incorrect smaller size.
+                payload = source.read(MAX_IMAGE_BYTES + 1)
+            if len(payload) > MAX_IMAGE_BYTES:
+                raise ValueError("Annotation image exceeds the maximum uncompressed file size.")
     except BadZipFile as exc:
         raise ValueError("Uploaded image bundle is not a valid ZIP file.") from exc
 
     try:
-        image = Image.open(BytesIO(payload)).convert("RGB")
-        image.load()
+        with Image.open(BytesIO(payload)) as source:
+            if source.width * source.height > MAX_IMAGE_PIXELS:
+                raise ValueError("Annotation image exceeds the maximum pixel count.")
+            image = source.convert("RGB")
+            image.load()
         return image
     except (UnidentifiedImageError, OSError) as exc:
         raise ValueError(f"Image '{safe_path.as_posix()}' cannot be decoded.") from exc
