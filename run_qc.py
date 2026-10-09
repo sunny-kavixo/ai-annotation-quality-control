@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 from annotation_qc.label_quality import inspect_labels
+from annotation_qc.reporting import build_issue_report
 from annotation_qc.validator import load_annotations, validate_dataframe
 
 
@@ -21,6 +22,11 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Validate an image-annotation CSV dataset.")
     parser.add_argument("dataset", type=Path, help="Path to an annotation CSV file")
     parser.add_argument("--output", type=Path, help="Optional path for a JSON QC report")
+    parser.add_argument(
+        "--issues-csv",
+        type=Path,
+        help="Optional path for a flat CSV report containing one row per QC issue",
+    )
     parser.add_argument("--image-root", type=Path, help="Optional root directory used to verify real image dimensions")
     parser.add_argument("--allowed-labels", type=Path, help="Optional newline-delimited approved label taxonomy")
     args = parser.parse_args()
@@ -43,6 +49,10 @@ def main() -> int:
     if args.output:
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.write_text(rendered + "\n", encoding="utf-8")
+
+    if args.issues_csv:
+        args.issues_csv.parent.mkdir(parents=True, exist_ok=True)
+        build_issue_report(df, result.issues).to_csv(args.issues_csv, index=False)
 
     return 0 if result.passed else 1
 
